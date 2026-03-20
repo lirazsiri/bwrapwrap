@@ -1,0 +1,22 @@
+# Build artifacts
+build/
+dist/
+*.egg-info/
+src/*.egg-info/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# pytest
+.pytest_cache/
+
+# Editor
+*.swp
+*.swo
+*~
+
+# Research (not for distribution)
+research/
+.venv/

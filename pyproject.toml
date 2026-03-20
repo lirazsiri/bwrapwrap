@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bwrapwrap"
+version = "0.1.0"
+description = "A bubblewrap (bwrap) wrapper for sandboxing commands"
+requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
+authors = [
+    { name = "Liraz Siri", email = "liraz@liraz.org" },
+]
+
+[project.scripts]
+bww = "bwrapwrap.cli:main"
+sandbox = "bwrapwrap.cli:main"
+
+[project.optional-dependencies]
+test = ["pytest"]

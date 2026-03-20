@@ -1,0 +1,93 @@
+.TH BWW 1 "2026-03-20" "bwrapwrap 0.1.0" "User Commands"
+.SH NAME
+bww \- run a command inside a bubblewrap sandbox
+.SH SYNOPSIS
+.B bww
+[\fIOPTIONS\fR] \fIcommand\fR [\fIargs\fR...]
+.SH DESCRIPTION
+.B bww
+wraps bubblewrap (bwrap) to sandbox commands with sensible defaults.
+Network is blocked, the filesystem is read-only except the current
+directory, and namespaces are unshared.
+.PP
+PATH directories and common toolchains (cargo/rustup) are auto-detected
+and bound read-only.
+.PP
+When the command name contains "claude", only the project session
+directory for the current working directory
+(\fI~/.claude/projects/<encoded-cwd>/\fR) is bound read-write.
+Shared config files (\fI.credentials.json\fR, \fIsettings.json\fR,
+\fICLAUDE.md\fR) are bound read-only. Other projects' session data
+is never exposed. Use \fB--fork\fR to branch into an isolated
+copy-on-write overlay instead.
+.SH OPTIONS
+.TP
+.B \-\-net
+Allow network access (blocked by default).
+.TP
+.B \-\-ptrace
+Allow ptrace (e.g., for strace or gdb).
+.TP
+.B \-\-fork\fR [\fINAME\fR]
+Fork \fI~/.claude\fR via fuse-overlayfs so writes go to
+\fI~/.sandbox/NAME/\fR without touching the real data.
+Auto-names if NAME is omitted.
+Prints a resume command on exit.
+.TP
+.B \-\-fork\-cleanup
+Delete the fork directory on exit (ephemeral).
+.TP
+.B \-\-dry\-run
+Print the generated bwrap command instead of running it.
+.TP
+.B \-\-help\fR, \fB\-h
+Show help and exit.
+.SH MOUNTS
+.TS
+l l.
+Mount	Mode
+_
+/usr, /lib, /lib64, /bin, /sbin	read-only
+/etc/alternatives, /etc/fonts, /etc/ssl	read-only
+/proc, /dev	standard
+/tmp	tmpfs
+Current working directory	read-write
+~/.cargo, ~/.rustup (if present)	read-only
+PATH directories	read-only
+~/.claude/projects/<cwd-session>/	read-write (claude only)
+~/.claude/{.credentials.json,settings.json,CLAUDE.md}	read-only (claude only)
+.TE
+.SH EXAMPLES
+.nf
+# Run a script with no network
+bww python3 script.py
+
+# Allow network
+bww \-\-net curl https://example.com
+
+# Claude with real ~/.claude
+bww \-\-net claude
+
+# Forked ~/.claude (copy-on-write)
+bww \-\-fork \-\-net claude
+
+# Named fork, resumable later
+bww \-\-fork=experiment \-\-net claude
+
+# Inspect generated bwrap command
+bww \-\-dry\-run echo hello
+.fi
+.SH FILES
+.TP
+.I ~/.sandbox/
+Fork overlay directories.
+.SH DEPENDENCIES
+.B bubblewrap
+(bwrap) is required. Install with:
+.B sudo apt install bubblewrap
+.PP
+.B fuse-overlayfs
+is required for \fB--fork\fR mode. Install with:
+.B sudo apt install fuse-overlayfs
+.SH AUTHORS
+Liraz Siri <liraz@liraz.org>
