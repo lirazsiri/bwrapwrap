@@ -27,7 +27,7 @@ class TestForkSetup:
     @pytest.mark.skipif(not _claude_available(), reason="claude not installed")
     def test_fork_creates_dir(self, tmp_cwd):
         name = f"test-fork-{int(time.time())}"
-        fork_dir = os.path.expanduser(f"~/.sandbox/{name}")
+        fork_dir = os.path.expanduser(f"~/.bww/{name}")
         try:
             r = run_sandbox(
                 ["--fork", name, "--fork-cleanup", "claude", "--version"],
@@ -62,14 +62,14 @@ class TestForkSetup:
         )
         assert r.returncode == 0
         # Should not contain any overlay-related binds
-        assert ".sandbox" not in r.stdout
+        assert ".bww" not in r.stdout
 
 
 class TestForkCleanup:
     @pytest.mark.skipif(not _claude_available(), reason="claude not installed")
     def test_fork_cleanup_removes_dir(self, tmp_cwd):
         name = f"test-cleanup-{int(time.time())}"
-        fork_dir = os.path.expanduser(f"~/.sandbox/{name}")
+        fork_dir = os.path.expanduser(f"~/.bww/{name}")
         try:
             run_sandbox(
                 ["--fork", name, "--fork-cleanup", "claude", "--version"],
@@ -86,7 +86,7 @@ class TestForkResume:
     @pytest.mark.skipif(not _claude_available(), reason="claude not installed")
     def test_fork_prints_resume_message(self, tmp_cwd):
         name = f"test-resume-{int(time.time())}"
-        fork_dir = os.path.expanduser(f"~/.sandbox/{name}")
+        fork_dir = os.path.expanduser(f"~/.bww/{name}")
         try:
             r = run_sandbox(
                 ["--fork", name, "claude", "--version"],

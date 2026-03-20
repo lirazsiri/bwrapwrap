@@ -38,7 +38,7 @@ bww [OPTIONS] <command> [args...]
 |------|-------------|
 | `--net` | Allow network access (blocked by default) |
 | `--ptrace` | Allow ptrace (for strace/gdb) |
-| `--fork [NAME]` | Fork `~/.claude` via fuse-overlayfs into `~/.sandbox/NAME/` |
+| `--fork [NAME]` | Fork `~/.claude` via fuse-overlayfs into `~/.bww/NAME/` |
 | `--fork-cleanup` | Delete the fork directory on exit |
 | `--dry-run` | Print the bwrap command without running it |
 | `--help`, `-h` | Show help |

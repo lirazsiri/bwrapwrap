@@ -29,7 +29,7 @@ Options:
   --net              Allow network access (default: blocked)
   --ptrace           Allow ptrace (e.g., for strace/gdb)
   --fork [NAME]      Fork ~/.claude via fuse-overlayfs so writes go
-                     to ~/.sandbox/NAME/ without touching the real
+                     to ~/.bww/NAME/ without touching the real
                      data. Auto-names if NAME is omitted. Prints a
                      resume command on exit.
   --fork-cleanup     Delete the fork directory on exit (ephemeral).
@@ -152,7 +152,7 @@ def main():
             fork_name = f"{Path(cmd_name).name}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
         else:
             fork_name = opts["fork"]
-        fork_dir = os.path.join(home, ".sandbox", fork_name)
+        fork_dir = os.path.join(home, ".bww", fork_name)
 
     extra_args = []
     overlay_mounts = []

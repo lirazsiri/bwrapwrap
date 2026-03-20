@@ -30,7 +30,7 @@ Allow ptrace (e.g., for strace or gdb).
 .TP
 .B \-\-fork\fR [\fINAME\fR]
 Fork \fI~/.claude\fR via fuse-overlayfs so writes go to
-\fI~/.sandbox/NAME/\fR without touching the real data.
+\fI~/.bww/NAME/\fR without touching the real data.
 Auto-names if NAME is omitted.
 Prints a resume command on exit.
 .TP
@@ -79,7 +79,7 @@ bww \-\-dry\-run echo hello
 .fi
 .SH FILES
 .TP
-.I ~/.sandbox/
+.I ~/.bww/
 Fork overlay directories.
 .SH DEPENDENCIES
 .B bubblewrap
