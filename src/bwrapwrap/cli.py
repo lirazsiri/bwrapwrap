@@ -26,8 +26,11 @@ Other projects' sessions are never exposed. Use --fork to branch
 into an isolated copy-on-write overlay instead.
 
 Options:
-  --net              Allow network access (default: blocked)
-  --ptrace           Allow ptrace (e.g., for strace/gdb)
+  --net, --no-net    Allow/block network access (default: blocked)
+  --ptrace, --no-ptrace
+                     Allow/deny ptrace (default: denied)
+  --bind PATH        Bind-mount PATH read-write inside the sandbox
+  --ro-bind PATH     Bind-mount PATH read-only inside the sandbox
   --fork [NAME]      Fork ~/.claude via fuse-overlayfs so writes go
                      to ~/.bww/NAME/ without touching the real
                      data. Auto-names if NAME is omitted. Prints a
@@ -36,11 +39,23 @@ Options:
   --dry-run          Print the bwrap command instead of running it.
   --help, -h         Show this help
 
+Config file:
+  If a .bwrapwrap file exists in the current directory, it is read for
+  sandbox defaults. Supported directives (one per line):
+    net              Allow network access
+    ptrace           Allow ptrace
+    bind PATH        Bind-mount PATH read-write
+    ro-bind PATH     Bind-mount PATH read-only
+  Blank lines and lines starting with # are ignored. CLI flags
+  (including --no-* variants) always override the config file.
+  The .bwrapwrap file itself is never writable inside the sandbox.
+
 Examples:
   bww python3 script.py          # isolated, no network
   bww --net claude               # claude with real ~/.claude
   bww --fork --net claude        # forked ~/.claude (auto-named)
   bww --fork=experiment claude   # forked, named "experiment"
+  bww --bind /data python3 app.py  # with /data read-write
 """
 
 BOUND_DIRS = ["/usr", "/lib", "/lib64", "/bin", "/sbin"]
@@ -59,11 +74,13 @@ def encode_claude_path(path):
 def parse_args(argv):
     """Parse sandbox flags, return (opts, command_args)."""
     opts = {
-        "net": False,
-        "ptrace": False,
+        "net": None,
+        "ptrace": None,
         "fork": None,
         "fork_cleanup": False,
         "dry_run": False,
+        "binds": [],
+        "ro_binds": [],
     }
     rest = list(argv)
 
@@ -74,8 +91,26 @@ def parse_args(argv):
             sys.exit(0)
         elif arg == "--net":
             opts["net"] = True
+        elif arg == "--no-net":
+            opts["net"] = False
         elif arg == "--ptrace":
             opts["ptrace"] = True
+        elif arg == "--no-ptrace":
+            opts["ptrace"] = False
+        elif arg.startswith("--bind="):
+            opts["binds"].append(arg.split("=", 1)[1])
+        elif arg == "--bind":
+            if not rest:
+                print("--bind requires a PATH argument", file=sys.stderr)
+                sys.exit(1)
+            opts["binds"].append(rest.pop(0))
+        elif arg.startswith("--ro-bind="):
+            opts["ro_binds"].append(arg.split("=", 1)[1])
+        elif arg == "--ro-bind":
+            if not rest:
+                print("--ro-bind requires a PATH argument", file=sys.stderr)
+                sys.exit(1)
+            opts["ro_binds"].append(rest.pop(0))
         elif arg.startswith("--fork="):
             opts["fork"] = arg.split("=", 1)[1]
         elif arg == "--fork":
@@ -116,6 +151,48 @@ def is_within_bound_dirs(path, cwd, home):
     if path == claude or path.startswith(claude + "/"):
         return True
     return False
+
+
+CONFIG_FILE = ".bwrapwrap"
+
+
+BOOLEAN_DIRECTIVES = {"net", "ptrace"}
+PATH_DIRECTIVES = {"bind", "ro-bind"}
+
+
+def load_config(cwd):
+    """Load directives from .bwrapwrap in the given directory."""
+    config = {"binds": [], "ro_binds": []}
+    config_path = os.path.join(cwd, CONFIG_FILE)
+    if not os.path.isfile(config_path):
+        return config
+    with open(config_path) as f:
+        for lineno, line in enumerate(f, 1):
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split(None, 1)
+            directive = parts[0]
+            if directive in BOOLEAN_DIRECTIVES:
+                config[directive] = True
+                continue
+            if directive not in PATH_DIRECTIVES:
+                print(f"{config_path}:{lineno}: unknown directive '{directive}'",
+                      file=sys.stderr)
+                sys.exit(1)
+            if len(parts) != 2:
+                print(f"{config_path}:{lineno}: '{directive}' requires a PATH argument",
+                      file=sys.stderr)
+                sys.exit(1)
+            path = os.path.expanduser(parts[1])
+            if not os.path.isabs(path):
+                path = os.path.join(cwd, path)
+            path = os.path.realpath(path)
+            if directive == "bind":
+                config["binds"].append(path)
+            elif directive == "ro-bind":
+                config["ro_binds"].append(path)
+    return config
 
 
 def resolve_command(cmd):
@@ -261,6 +338,28 @@ def main():
         extra_args += ["--ro-bind", staging_dir, staging_dir]
 
     extra_args += ["--setenv", "PATH", sandbox_path]
+
+    # Load config file and merge (CLI takes precedence)
+    config = load_config(cwd)
+    for key in BOOLEAN_DIRECTIVES:
+        if opts[key] is None:
+            opts[key] = config.get(key, False)
+        # else CLI explicitly set it, keep that value
+    all_binds = opts["binds"] + config["binds"]
+    all_ro_binds = opts["ro_binds"] + config["ro_binds"]
+    for path in all_binds:
+        path = os.path.realpath(os.path.expanduser(path))
+        if os.path.exists(path):
+            extra_args += ["--bind", path, path]
+    for path in all_ro_binds:
+        path = os.path.realpath(os.path.expanduser(path))
+        if os.path.exists(path):
+            extra_args += ["--ro-bind", path, path]
+
+    # Hide .bwrapwrap config file inside the sandbox
+    config_file = os.path.join(cwd, CONFIG_FILE)
+    if os.path.isfile(config_file):
+        extra_args += ["--ro-bind", "/dev/null", config_file]
 
     # Net flag
     net_flag = "--share-net" if opts["net"] else "--unshare-net"
