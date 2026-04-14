@@ -17,7 +17,7 @@ When the command name contains "claude", only the project session
 directory for the current working directory
 (\fI~/.claude/projects/<encoded-cwd>/\fR) is bound read-write.
 Shared config files (\fI.credentials.json\fR, \fIsettings.json\fR,
-\fICLAUDE.md\fR) are bound read-only. Other projects' session data
+\fICLAUDE.md\fR, \fIskills/\fR) are bound read-only. Other projects' session data
 is never exposed. Use \fB--fork\fR to branch into an isolated
 copy-on-write overlay instead.
 .SH OPTIONS
@@ -55,7 +55,7 @@ Current working directory	read-write
 ~/.cargo, ~/.rustup (if present)	read-only
 PATH directories	read-only
 ~/.claude/projects/<cwd-session>/	read-write (claude only)
-~/.claude/{.credentials.json,settings.json,CLAUDE.md}	read-only (claude only)
+~/.claude/{.credentials.json,settings.json,CLAUDE.md,skills}	read-only (claude only)
 .TE
 .SH EXAMPLES
 .nf

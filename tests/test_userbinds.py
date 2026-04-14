@@ -151,6 +151,65 @@ class TestConfigBooleans:
         assert "CAP_SYS_PTRACE" not in out
 
 
+class TestInit:
+    def test_init_net(self, tmp_cwd):
+        r = run_sandbox(["--net", "--init"], cwd=tmp_cwd)
+        assert r.returncode == 0
+        config = os.path.join(tmp_cwd, ".bwrapwrap")
+        assert os.path.isfile(config)
+        content = open(config).read()
+        assert "net\n" in content
+
+    def test_init_ptrace(self, tmp_cwd):
+        r = run_sandbox(["--ptrace", "--init"], cwd=tmp_cwd)
+        assert r.returncode == 0
+        content = open(os.path.join(tmp_cwd, ".bwrapwrap")).read()
+        assert "ptrace\n" in content
+
+    def test_init_binds(self, tmp_cwd):
+        d1 = os.path.join(tmp_cwd, "d1")
+        d2 = os.path.join(tmp_cwd, "d2")
+        os.makedirs(d1)
+        os.makedirs(d2)
+        r = run_sandbox(["--bind", d1, "--ro-bind", d2, "--init"], cwd=tmp_cwd)
+        assert r.returncode == 0
+        content = open(os.path.join(tmp_cwd, ".bwrapwrap")).read()
+        assert f"bind {d1}\n" in content
+        assert f"ro-bind {d2}\n" in content
+
+    def test_init_combined(self, tmp_cwd):
+        d = os.path.join(tmp_cwd, "data")
+        os.makedirs(d)
+        r = run_sandbox(["--net", "--ptrace", "--bind", d, "--init"], cwd=tmp_cwd)
+        assert r.returncode == 0
+        content = open(os.path.join(tmp_cwd, ".bwrapwrap")).read()
+        assert "net\n" in content
+        assert "ptrace\n" in content
+        assert f"bind {d}\n" in content
+
+    def test_init_empty(self, tmp_cwd):
+        """--init with no flags creates an empty file."""
+        r = run_sandbox(["--init"], cwd=tmp_cwd)
+        assert r.returncode == 0
+        content = open(os.path.join(tmp_cwd, ".bwrapwrap")).read()
+        assert content == ""
+
+    def test_init_no_command_needed(self, tmp_cwd):
+        """--init should not require a command argument."""
+        r = run_sandbox(["--net", "--init"], cwd=tmp_cwd)
+        assert r.returncode == 0
+
+    def test_init_overwrites_existing(self, tmp_cwd):
+        config = os.path.join(tmp_cwd, ".bwrapwrap")
+        with open(config, "w") as f:
+            f.write("ptrace\n")
+        r = run_sandbox(["--net", "--init"], cwd=tmp_cwd)
+        assert r.returncode == 0
+        content = open(config).read()
+        assert "net\n" in content
+        assert "ptrace" not in content
+
+
 class TestConfigFileDenylist:
     def test_config_file_hidden(self, tmp_cwd):
         """The .bwrapwrap file must be mapped to /dev/null inside the sandbox."""

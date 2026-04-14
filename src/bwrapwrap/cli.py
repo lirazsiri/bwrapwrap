@@ -21,7 +21,7 @@ namespaces are unshared. PATH directories and common toolchains
 
 When the command name contains "claude", the project session directory
 (~/.claude/projects/<encoded-cwd>/) is bound read-write. Shared config
-(.credentials.json, settings.json, CLAUDE.md) is bound read-only.
+(.credentials.json, settings.json, CLAUDE.md, skills) is bound read-only.
 Other projects' sessions are never exposed. Use --fork to branch
 into an isolated copy-on-write overlay instead.
 
@@ -36,6 +36,7 @@ Options:
                      data. Auto-names if NAME is omitted. Prints a
                      resume command on exit.
   --fork-cleanup     Delete the fork directory on exit (ephemeral).
+  --init             Write current flags to .bwrapwrap and exit
   --dry-run          Print the bwrap command instead of running it.
   --help, -h         Show this help
 
@@ -61,7 +62,7 @@ Examples:
 BOUND_DIRS = ["/usr", "/lib", "/lib64", "/bin", "/sbin"]
 
 # Files/dirs under ~/.claude to bind read-only for claude commands
-CLAUDE_RO_FILES = [".credentials.json", "settings.json", "CLAUDE.md", "statsig"]
+CLAUDE_RO_FILES = [".credentials.json", "settings.json", "CLAUDE.md", "statsig", "skills"]
 # Dirs under ~/.claude to bind read-write for claude commands
 CLAUDE_RW_DIRS = ["projects"]
 
@@ -78,6 +79,7 @@ def parse_args(argv):
         "ptrace": None,
         "fork": None,
         "fork_cleanup": False,
+        "init": False,
         "dry_run": False,
         "binds": [],
         "ro_binds": [],
@@ -120,6 +122,8 @@ def parse_args(argv):
                 opts["fork"] = "__auto__"
         elif arg == "--fork-cleanup":
             opts["fork_cleanup"] = True
+        elif arg == "--init":
+            opts["init"] = True
         elif arg == "--dry-run":
             opts["dry_run"] = True
         else:
@@ -211,6 +215,22 @@ def main():
         sys.exit(1)
 
     opts, cmd_args = parse_args(sys.argv[1:])
+
+    if opts["init"]:
+        config_path = os.path.join(os.getcwd(), CONFIG_FILE)
+        lines = []
+        if opts["net"] is True:
+            lines.append("net")
+        if opts["ptrace"] is True:
+            lines.append("ptrace")
+        for p in opts["binds"]:
+            lines.append(f"bind {p}")
+        for p in opts["ro_binds"]:
+            lines.append(f"ro-bind {p}")
+        with open(config_path, "w") as f:
+            f.write("\n".join(lines) + ("\n" if lines else ""))
+        print(f"Wrote {config_path}")
+        sys.exit(0)
 
     if not cmd_args:
         print("Usage: bww [--help] [--net] [--ptrace] [--fork [NAME]] <command> [args]")

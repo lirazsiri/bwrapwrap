@@ -132,6 +132,15 @@ class TestClaudeDetection:
         out = dry_run(["claude"], cwd=tmp_cwd)
         assert f"--ro-bind {claude_md} {claude_md}" in out
 
+    def test_claude_binds_skills_ro(self, sandbox_bin, tmp_cwd):
+        """Claude command binds ~/.claude/skills read-only."""
+        home = os.environ["HOME"]
+        skills = os.path.join(home, ".claude", "skills")
+        if not os.path.isdir(skills):
+            return
+        out = dry_run(["claude"], cwd=tmp_cwd)
+        assert f"--ro-bind {skills} {skills}" in out
+
     def test_claude_code_command_detected(self, sandbox_bin, tmp_cwd):
         """claude-code also triggers claude detection."""
         home = os.environ["HOME"]

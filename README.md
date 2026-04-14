@@ -77,11 +77,11 @@ bww --dry-run echo hello
 | `~/.cargo`, `~/.rustup` (if they exist) | read-only |
 | PATH directories | read-only |
 | `~/.claude/projects/<cwd-session>/` (claude only) | read-write |
-| `~/.claude/{.credentials.json,settings.json,CLAUDE.md}` (claude only) | read-only |
+| `~/.claude/{.credentials.json,settings.json,CLAUDE.md,skills}` (claude only) | read-only |
 
 ### Claude detection
 
-When the command name contains "claude", `bww` binds only the project session directory for the current working directory (`~/.claude/projects/<encoded-cwd>/`) read-write. Shared config files (`.credentials.json`, `settings.json`, `CLAUDE.md`) are bound read-only. Other projects' session data is never exposed. Use `--fork` to isolate writes into a copy-on-write overlay instead.
+When the command name contains "claude", `bww` binds only the project session directory for the current working directory (`~/.claude/projects/<encoded-cwd>/`) read-write. Shared config files (`.credentials.json`, `settings.json`, `CLAUDE.md`, `skills/`) are bound read-only. Other projects' session data is never exposed. Use `--fork` to isolate writes into a copy-on-write overlay instead.
 
 ## Testing
 
