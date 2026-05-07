@@ -40,6 +40,7 @@ bww [OPTIONS] <command> [args...]
 | `--ptrace` | Allow ptrace (for strace/gdb) |
 | `--fork [NAME]` | Fork `~/.claude` via fuse-overlayfs into `~/.bww/NAME/` |
 | `--fork-cleanup` | Delete the fork directory on exit |
+| `--save` | Amend `.bwrapwrap` with the supplied options and exit |
 | `--dry-run` | Print the bwrap command without running it |
 | `--help`, `-h` | Show help |
 
@@ -51,6 +52,9 @@ bww python3 script.py
 
 # Allow network access
 bww --net curl https://example.com
+
+# Persist network access for this directory
+bww --net --save
 
 # Run claude with real ~/.claude bound read-write
 bww --net claude

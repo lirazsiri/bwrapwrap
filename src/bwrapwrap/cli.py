@@ -36,7 +36,7 @@ Options:
                      data. Auto-names if NAME is omitted. Prints a
                      resume command on exit.
   --fork-cleanup     Delete the fork directory on exit (ephemeral).
-  --init             Write current flags to .bwrapwrap and exit
+  --save             Amend .bwrapwrap with current flags and exit
   --dry-run          Print the bwrap command instead of running it.
   --help, -h         Show this help
 
@@ -79,7 +79,7 @@ def parse_args(argv):
         "ptrace": None,
         "fork": None,
         "fork_cleanup": False,
-        "init": False,
+        "save": False,
         "dry_run": False,
         "binds": [],
         "ro_binds": [],
@@ -122,8 +122,8 @@ def parse_args(argv):
                 opts["fork"] = "__auto__"
         elif arg == "--fork-cleanup":
             opts["fork_cleanup"] = True
-        elif arg == "--init":
-            opts["init"] = True
+        elif arg == "--save":
+            opts["save"] = True
         elif arg == "--dry-run":
             opts["dry_run"] = True
         else:
@@ -199,6 +199,65 @@ def load_config(cwd):
     return config
 
 
+def _normalize_config_path(path, cwd):
+    path = os.path.expanduser(path)
+    if not os.path.isabs(path):
+        path = os.path.join(cwd, path)
+    return os.path.realpath(path)
+
+
+def _config_line_directive(line):
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return None, None
+    parts = stripped.split(None, 1)
+    return parts[0], parts[1] if len(parts) == 2 else None
+
+
+def save_config(cwd, opts):
+    """Amend .bwrapwrap with explicitly supplied CLI options."""
+    config_path = os.path.join(cwd, CONFIG_FILE)
+    if os.path.isfile(config_path):
+        with open(config_path) as f:
+            lines = f.read().splitlines()
+    else:
+        lines = []
+
+    kept_lines = []
+    seen_booleans = set()
+    seen_paths = {directive: set() for directive in PATH_DIRECTIVES}
+
+    for line in lines:
+        directive, value = _config_line_directive(line)
+        if directive in BOOLEAN_DIRECTIVES:
+            if opts[directive] is False:
+                continue
+            seen_booleans.add(directive)
+        elif directive in PATH_DIRECTIVES and value is not None:
+            seen_paths[directive].add(_normalize_config_path(value, cwd))
+        kept_lines.append(line)
+
+    for directive in ("net", "ptrace"):
+        if opts[directive] is True and directive not in seen_booleans:
+            kept_lines.append(directive)
+
+    additions = (
+        ("bind", opts["binds"]),
+        ("ro-bind", opts["ro_binds"]),
+    )
+    for directive, paths in additions:
+        for path in paths:
+            normalized = _normalize_config_path(path, cwd)
+            if normalized in seen_paths[directive]:
+                continue
+            kept_lines.append(f"{directive} {path}")
+            seen_paths[directive].add(normalized)
+
+    with open(config_path, "w") as f:
+        f.write("\n".join(kept_lines) + ("\n" if kept_lines else ""))
+    return config_path
+
+
 def resolve_command(cmd):
     """Resolve command to absolute path."""
     found = shutil.which(cmd)
@@ -216,19 +275,8 @@ def main():
 
     opts, cmd_args = parse_args(sys.argv[1:])
 
-    if opts["init"]:
-        config_path = os.path.join(os.getcwd(), CONFIG_FILE)
-        lines = []
-        if opts["net"] is True:
-            lines.append("net")
-        if opts["ptrace"] is True:
-            lines.append("ptrace")
-        for p in opts["binds"]:
-            lines.append(f"bind {p}")
-        for p in opts["ro_binds"]:
-            lines.append(f"ro-bind {p}")
-        with open(config_path, "w") as f:
-            f.write("\n".join(lines) + ("\n" if lines else ""))
+    if opts["save"]:
+        config_path = save_config(os.getcwd(), opts)
         print(f"Wrote {config_path}")
         sys.exit(0)
 
